@@ -1,0 +1,13 @@
+#!/bin/sh
+
+echo "Running cargo fmt..."
+cargo fmt
+
+echo "Running cargo clippy..."
+if ! cargo clippy -- -D warnings; then
+    echo "cargo clippy found issues, commit aborted."
+    exit 1
+fi
+
+echo "cargo clippy passed, proceeding with commit."
+exit 0
