@@ -97,7 +97,7 @@ impl Drop for TermoraryChild {
     }
 }
 
-pub fn run_successful_command(mut cmd: Command) -> anyhow::Result<()> {
+pub fn run_successful_command(cmd: &mut Command) -> anyhow::Result<()> {
     let status = cmd.status()?;
     if !status.success() {
         match status.code() {
@@ -108,7 +108,7 @@ pub fn run_successful_command(mut cmd: Command) -> anyhow::Result<()> {
     Ok(())
 }
 
-pub fn run_failed_command(mut cmd: Command) -> anyhow::Result<()> {
+pub fn run_failed_command(cmd: &mut Command) -> anyhow::Result<()> {
     let status = cmd.status()?;
     if status.success() {
         bail!("Command succeeded though should have failed.");

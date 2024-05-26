@@ -1,6 +1,6 @@
 [package]
 name = "like-shell"
-version = "0.2.2"
+version = "0.2.3"
 description = "Shell-like utilities for Rust. Useful for E2E tests."
 license = "Apache-2.0"
 edition = "2021"
