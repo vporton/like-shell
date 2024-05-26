@@ -91,7 +91,7 @@ fn spawn_dump_to_string(mut stream: Box<dyn std::io::Read + Send + Sync>, string
 impl Drop for TermoraryChild {
     fn drop(&mut self) {
         // Get the process group ID of the child process
-        let pid = -(self.child.id() as i32) as i32; // Negative PID targets process group
+        let pid = -(self.child.id() as i32); // Negative PID targets process group
 
         unsafe { libc::kill(pid, libc::SIGTERM); } // Send SIGTERM to the group
     }
