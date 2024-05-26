@@ -7,6 +7,7 @@ use std::os::unix::process::CommandExt;
 use std::io::{ErrorKind, Read};
 use std::thread;
 
+use anyhow::bail;
 use fs_extra::dir::CopyOptions;
 use tempdir::TempDir;
 
@@ -96,3 +97,21 @@ impl Drop for TermoraryChild {
     }
 }
 
+pub fn run_successful_command(mut cmd: Command) -> anyhow::Result<()> {
+    let status = cmd.status()?;
+    if !status.success() {
+        match status.code() {
+            Some(code) => bail!("Command failed with exit code: {}.", code),
+            None => bail!("Process terminated by a signal."),
+        }
+    }
+    Ok(())
+}
+
+pub fn run_failed_command(mut cmd: Command) -> anyhow::Result<()> {
+    let status = cmd.status()?;
+    if status.success() {
+        bail!("Command succeeded though should have failed.");
+    }
+    Ok(())
+}
