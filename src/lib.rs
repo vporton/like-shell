@@ -1,11 +1,11 @@
 use std::ffi::OsString;
-use std::os::unix::ffi::OsStringExt;
-use std::sync::{Arc, Mutex};
-use std::{env::set_current_dir, path::Path};
-use std::process::{Command, Stdio, Child};
-use std::os::unix::process::CommandExt;
 use std::io::{ErrorKind, Read};
+use std::os::unix::ffi::OsStringExt;
+use std::os::unix::process::CommandExt;
+use std::process::{Child, Command, Stdio};
+use std::sync::{Arc, Mutex};
 use std::thread;
+use std::{env::set_current_dir, path::Path};
 
 use anyhow::bail;
 use fs_extra::dir::CopyOptions;
@@ -21,7 +21,7 @@ pub fn temp_dir_from_template(source_dir: &Path) -> Result<TempDir, Box<dyn std:
 }
 
 /// Child process (or process group) that runs till the object is dropped.
-pub struct TermoraryChild {
+pub struct TemporaryChild {
     child: Child,
 }
 
@@ -30,7 +30,7 @@ pub struct Capture {
     stderr: Option<Arc<Mutex<String>>>,
 }
 
-impl TermoraryChild {
+impl TemporaryChild {
     /// Spawn child process with optional capturing its output.
     pub fn spawn(cmd: &mut Command, capture: Capture) -> std::io::Result<Self> {
         if capture.stdout.is_some() {
@@ -62,38 +62,46 @@ impl TermoraryChild {
             spawn_dump_to_string(Box::new(stderr), capture_stderr)
         }
 
-        Ok(TermoraryChild {
-            child,
-        })
+        Ok(TemporaryChild { child })
     }
 }
 
-fn spawn_dump_to_string(mut stream: Box<dyn std::io::Read + Send + Sync>, string: Arc<Mutex<String>>) {
+fn spawn_dump_to_string(
+    mut stream: Box<dyn std::io::Read + Send + Sync>,
+    string: Arc<Mutex<String>>,
+) {
     thread::spawn(move || {
         let mut buf = [0; 4096];
         loop {
             let r = stream.read(&mut buf);
             match r {
-                Err(err) => if err.kind() == ErrorKind::UnexpectedEof {
-                    return; // terminate the thread.
-                } else {
-                    panic!("Error in reading child output: {}", err);
-                },
+                Err(err) => {
+                    if err.kind() == ErrorKind::UnexpectedEof {
+                        return; // terminate the thread.
+                    } else {
+                        panic!("Error in reading child output: {}", err);
+                    }
+                }
                 Ok(r) => {
                     let s = OsString::from_vec(Vec::from(&buf[..r]));
-                    string.lock().unwrap().push_str(s.to_str().expect("Wrong text encoding in child output"));
+                    string
+                        .lock()
+                        .unwrap()
+                        .push_str(s.to_str().expect("Wrong text encoding in child output"));
                 }
             }
         }
     });
 }
 
-impl Drop for TermoraryChild {
+impl Drop for TemporaryChild {
     fn drop(&mut self) {
         // Get the process group ID of the child process
         let pid = -(self.child.id() as i32); // Negative PID targets process group
 
-        unsafe { libc::kill(pid, libc::SIGTERM); } // Send SIGTERM to the group
+        unsafe {
+            libc::kill(pid, libc::SIGTERM);
+        } // Send SIGTERM to the group
     }
 }
 
