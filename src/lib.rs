@@ -26,8 +26,8 @@ pub struct TemporaryChild {
 }
 
 pub struct Capture {
-    stdout: Option<Arc<Mutex<String>>>,
-    stderr: Option<Arc<Mutex<String>>>,
+    pub stdout: Option<Arc<Mutex<String>>>,
+    pub stderr: Option<Arc<Mutex<String>>>,
 }
 
 impl TemporaryChild {
