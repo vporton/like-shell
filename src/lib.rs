@@ -110,10 +110,7 @@ impl Drop for TemporaryChild {
 
             // Wait for the child process to exit
             loop {
-                match waitpid(
-                    Pid::from_raw(id as i32),
-                    Some(WaitPidFlag::WNOHANG),
-                ) {
+                match waitpid(Pid::from_raw(id as i32), Some(WaitPidFlag::WNOHANG)) {
                     Ok(WaitStatus::Exited(_, _)) | Ok(WaitStatus::Signaled(_, _, _)) => break,
                     Ok(_) => continue,
                     Err(_) => break,
