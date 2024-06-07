@@ -10,6 +10,8 @@ use std::{env::set_current_dir, path::Path};
 use anyhow::bail;
 use fs_extra::dir::CopyOptions;
 use tempdir::TempDir;
+use nix::sys::wait::{waitpid, WaitPidFlag, WaitStatus};
+use nix::unistd::Pid;
 
 /// Create a temporary directory filled with a copy of `source_dir`.
 pub fn temp_dir_from_template(source_dir: &Path) -> Result<TempDir, Box<dyn std::error::Error>> {
@@ -102,6 +104,15 @@ impl Drop for TemporaryChild {
         unsafe {
             libc::kill(pid, libc::SIGTERM);
         } // Send SIGTERM to the group
+
+        // Wait for the child process to exit
+        loop {
+            match waitpid(Pid::from_raw(self.child.id() as i32), Some(WaitPidFlag::WNOHANG)) {
+                Ok(WaitStatus::Exited(_, _)) | Ok(WaitStatus::Signaled(_, _, _)) => break,
+                Ok(_) => continue,
+                Err(_) => break,
+            }
+        }
     }
 }
 
