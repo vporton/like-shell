@@ -8,11 +8,11 @@ use std::{env::set_current_dir, path::Path};
 
 use anyhow::bail;
 use fs_extra::dir::CopyOptions;
-use nix::sys::wait::{waitpid, WaitPidFlag, WaitStatus};
-use nix::unistd::Pid;
+// use nix::sys::wait::{waitpid, WaitPidFlag, WaitStatus};
+// use nix::unistd::Pid;
 use tempdir::TempDir;
 use tokio::io::{AsyncRead, AsyncReadExt};
-use tokio::process::{Child, Command};
+use tokio::process::Command;
 use tokio::sync::Mutex;
 
 /// Create a temporary directory filled with a copy of `source_dir`.
@@ -26,7 +26,7 @@ pub fn temp_dir_from_template(source_dir: &Path) -> Result<TempDir, Box<dyn std:
 
 /// Child process (or process group) that runs till the object is dropped.
 pub struct TemporaryChild {
-    child: Child,
+    // child: Child,
 }
 
 pub struct Capture {
@@ -45,14 +45,14 @@ impl TemporaryChild {
             cmd.stderr(Stdio::piped());
         }
 
-        unsafe {
-            cmd.pre_exec(|| {
-                libc::setpgid(0, 0);
-                Ok(())
-            });
-        }
+        // unsafe {
+        //     cmd.pre_exec(|| {
+        //         libc::setpgid(0, 0);
+        //         Ok(())
+        //     });
+        // }
 
-        let mut child = cmd.spawn()?;
+        let mut child = cmd.kill_on_drop(true).spawn()?;
 
         // Threads terminate, when the child exits.
 
@@ -66,7 +66,7 @@ impl TemporaryChild {
             spawn_dump_to_string(Box::pin(stderr), capture_stderr).await;
         }
 
-        Ok(TemporaryChild { child })
+        Ok(TemporaryChild { /*child*/ })
     }
 }
 
@@ -98,27 +98,27 @@ async fn spawn_dump_to_string(
     });
 }
 
-impl Drop for TemporaryChild {
-    fn drop(&mut self) {
-        if let Some(id) = self.child.id() {
-            // Get the process group ID of the child process
-            let pid = -(id as i32); // Negative PID targets process group
+// impl Drop for TemporaryChild {
+//     fn drop(&mut self) {
+//         if let Some(id) = self.child.id() {
+//             // Get the process group ID of the child process
+//             let pid = -(id as i32); // Negative PID targets process group
 
-            unsafe {
-                libc::kill(pid, libc::SIGTERM);
-            } // Send SIGTERM to the group
+//             unsafe {
+//                 libc::kill(pid, libc::SIGTERM);
+//             } // Send SIGTERM to the group
 
-            // Wait for the child process to exit
-            loop {
-                match waitpid(Pid::from_raw(id as i32), Some(WaitPidFlag::WNOHANG)) {
-                    Ok(WaitStatus::Exited(_, _)) | Ok(WaitStatus::Signaled(_, _, _)) => break,
-                    Ok(_) => continue,
-                    Err(_) => break,
-                }
-            }
-        }
-    }
-}
+//             // Wait for the child process to exit
+//             loop {
+//                 match waitpid(Pid::from_raw(id as i32), Some(WaitPidFlag::WNOHANG)) {
+//                     Ok(WaitStatus::Exited(_, _)) | Ok(WaitStatus::Signaled(_, _, _)) => break,
+//                     Ok(_) => continue,
+//                     Err(_) => break,
+//                 }
+//             }
+//         }
+//     }
+// }
 
 pub async fn run_successful_command(cmd: &mut Command) -> anyhow::Result<()> {
     let status = cmd.status().await?;
